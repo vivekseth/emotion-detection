@@ -42,21 +42,41 @@ def vectorize(filename):
     oned_array = im_array.reshape(1, size[0] * size[1])
     return oned_array
 
+"""
+returns -1 on error. 
+returns 0 for no smile
+returns 1 for smile
+"""
+def is_smiling(lr, image):
+    mouth_image_name = 'temp-mouth.jpg'
+    mouth = m.findmouth(image)
+    # show(mouth)
+    if mouth != 2: # did not return error
+        mouthimg = crop(mouth)
+        cv.SaveImage(mouth_image_name, mouthimg)
+        # predict the captured emotion
+        result = lr.predict(vectorize(mouth_image_name))
+        if result == 1:
+            return 1
+        else:
+            return 0
+    else:
+        return -1;
 
-if __name__ == '__main__':
-    """
-    load training data
-    """
+"""
+load training data
+"""
+def train_recognition():
     # create a list for filenames of smiles pictures
     smilefiles = []
     with open('smiles.csv', 'rb') as csvfile:
-        for rec in csv.reader(csvfile, delimiter='	'):
+        for rec in csv.reader(csvfile, delimiter='\t'):
             smilefiles += rec
 
     # create a list for filenames of neutral pictures
     neutralfiles = []
     with open('neutral.csv', 'rb') as csvfile:
-        for rec in csv.reader(csvfile, delimiter='	'):
+        for rec in csv.reader(csvfile, delimiter='\t'):
             neutralfiles += rec
 
     # N x dim matrix to store the vectorized data (aka feature space)       
@@ -82,6 +102,13 @@ if __name__ == '__main__':
     """
     lr = logistic.Logistic(dim)
     lr.train(phi, labels)
+
+    return lr
+
+
+
+if __name__ == '__main__':
+    lr = train_recognition()
     
 
     """
@@ -106,18 +133,13 @@ if __name__ == '__main__':
         if key == 32: # press space to save images
             cv.SaveImage("webcam.jpg", cv.fromarray(frame))
             img = cv.LoadImage("webcam.jpg") # input image
-            mouth = m.findmouth(img)
-            # show(mouth)
-            if mouth != 2: # did not return error
-                mouthimg = crop(mouth)
-                cv.SaveImage("webcam-m.jpg", mouthimg)
-                # predict the captured emotion
-                result = lr.predict(vectorize('webcam-m.jpg'))
-                if result == 1:
-                    print "you are smiling! :-) "
-                else:
-                    print "you are not smiling :-| "
-            else:
+            
+            res = is_smiling(lr, img)
+            if (res == -1):
                 print "failed to detect mouth. Try hold your head straight and make sure there is only one face."
+            elif (res == 0):
+                print "FROWN :("
+            else:
+                print "SMILE :)"
     
     cv2.destroyWindow("preview")
